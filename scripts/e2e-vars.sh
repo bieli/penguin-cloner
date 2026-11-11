@@ -5,7 +5,6 @@ set -euo pipefail
 BIN=${1:-./target/release/penguin-cloner}
 BIN=$(readlink -f "$BIN")
 WORK=$(mktemp -d)
-trap 'rm -rf "$WORK"' EXIT
 cd "$(dirname "$0")/.."
 
 gcc -O0 -w -o "$WORK/t2" testdata/target2.c -lm
@@ -27,6 +26,15 @@ run_as_parent "$BIN" vars --pid @PID@ --out "$WORK/v" --watch 2 --print >"$WORK/
   || { cat "$WORK/stderr"; exit 1; }
 run_as_parent "$BIN" dump --pid @PID@ --out "$WORK/d" --vars --heap-stack-only >/dev/null 2>"$WORK/stderr2" \
   || { cat "$WORK/stderr2"; exit 1; }
+
+diagnostics() {
+  echo "---- diagnostics ----"
+  gcc --version | head -1
+  echo "float/double accesses in the target:"
+  objdump -d --no-show-raw-insn -M intel "$WORK/t2" | grep -E "xmm" | grep -E "rip\+" || true
+  python3 -I -c "import json,sys; d=json.load(open(sys.argv[1])); print(json.dumps(d['notes'], indent=1)); print(json.dumps({k:v for k,v in d['details'].items() if k in ('g_4024','g_4028','g_4090')}, indent=1))" "$WORK/v/variables.json" || true
+}
+trap 'rc=$?; [ $rc -ne 0 ] && diagnostics; rm -rf "$WORK"; exit $rc' EXIT
 
 python3 -I - "$WORK/v/variables.json" "$WORK/d/variables.json" "$WORK/stdout" <<'PY'
 import json, sys

@@ -94,6 +94,47 @@ fn target_sections(elf: &Elf, rodata: bool) -> Vec<TargetSec> {
         .collect()
 }
 
+/// (single, double) for a legacy-encoded scalar SSE mnemonic (lowercase, no `v` prefix).
+fn is_scalar_sse(m: &str) -> (bool, bool) {
+    const SINGLE: &[&str] = &[
+        "movss",
+        "addss",
+        "subss",
+        "mulss",
+        "divss",
+        "sqrtss",
+        "maxss",
+        "minss",
+        "comiss",
+        "ucomiss",
+        "cvtss2sd",
+        "cvtss2si",
+        "cvttss2si",
+        "cmpss",
+        "rcpss",
+        "rsqrtss",
+        "roundss",
+    ];
+    const DOUBLE: &[&str] = &[
+        "movsd",
+        "addsd",
+        "subsd",
+        "mulsd",
+        "divsd",
+        "sqrtsd",
+        "maxsd",
+        "minsd",
+        "comisd",
+        "ucomisd",
+        "cvtsd2ss",
+        "cvtsd2si",
+        "cvttsd2si",
+        "cmpsd",
+        "roundsd",
+    ];
+    (SINGLE.contains(&m), DOUBLE.contains(&m))
+}
+
 /// Decode every executable section and count RIP-relative references into data sections.
 #[cfg(feature = "xrefs")]
 fn scan_xrefs(elf: &Elf, targets: &[TargetSec]) -> Result<BTreeMap<u64, Refs>, String> {
@@ -140,36 +181,15 @@ fn scan_xrefs(elf: &Elf, targets: &[TargetSec]) -> Result<BTreeMap<u64, Refs>, S
                 r.lea += 1;
                 continue;
             }
-            // scalar SSE: the mnemonic says float (ss) or double (sd), whatever the operand size says
-            let mn = instr.mnemonic();
-            let single = matches!(
-                mn,
-                Mnemonic::Movss
-                    | Mnemonic::Addss
-                    | Mnemonic::Subss
-                    | Mnemonic::Mulss
-                    | Mnemonic::Divss
-                    | Mnemonic::Sqrtss
-                    | Mnemonic::Maxss
-                    | Mnemonic::Minss
-                    | Mnemonic::Comiss
-                    | Mnemonic::Ucomiss
-                    | Mnemonic::Cvtss2sd
-            );
-            let double = matches!(
-                mn,
-                Mnemonic::Movsd
-                    | Mnemonic::Addsd
-                    | Mnemonic::Subsd
-                    | Mnemonic::Mulsd
-                    | Mnemonic::Divsd
-                    | Mnemonic::Sqrtsd
-                    | Mnemonic::Maxsd
-                    | Mnemonic::Minsd
-                    | Mnemonic::Comisd
-                    | Mnemonic::Ucomisd
-                    | Mnemonic::Cvtsd2ss
-            );
+            // scalar SSE: the mnemonic says float (ss) or double (sd), whatever the operand size
+            // says. VEX forms (vmovss, vcomisd, ... as emitted with -mavx / x86-64-v3 builds) are
+            // the same operations with a `v` prefix.
+            let name = format!("{:?}", instr.mnemonic()).to_ascii_lowercase();
+            let base = match name.strip_prefix('v') {
+                Some(rest) if is_scalar_sse(rest) != (false, false) => rest,
+                _ => name.as_str(),
+            };
+            let (single, double) = is_scalar_sse(base);
             if single {
                 r.f32s += 1;
                 r.w4 += 1;

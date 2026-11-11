@@ -2,6 +2,7 @@
 name = "penguin-cloner"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.88"
 description = "Dump a running Linux process binary and memory for disaster-recovery / config recovery"
 license = "MIT"
 readme = "README.md"

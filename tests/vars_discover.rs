@@ -118,12 +118,18 @@ mod xrefs {
     ///   movsd xmm0, [rip+..]  -> 0x4008 (f64)
     ///   lea  rdi, [rip+..]    -> 0x4010 (string)
     fn image() -> Vec<u8> {
+        image_with(&[0xF3, 0x0F, 0x10, 0x05], &[0xF2, 0x0F, 0x10, 0x05])
+    }
+
+    /// Same program as `image`, with the float/double loads given as raw opcode prefixes
+    /// (legacy SSE: `movss`/`movsd`; VEX: `vmovss`/`vmovsd`, both 4 bytes before the disp32).
+    fn image_with(movss: &[u8; 4], movsd: &[u8; 4]) -> Vec<u8> {
         let mut code: Vec<u8> = Vec::new();
         code.extend_from_slice(&[0x8B, 0x05]);
         le32(&mut code, 0x4000 - 0x1006);
-        code.extend_from_slice(&[0xF3, 0x0F, 0x10, 0x05]);
+        code.extend_from_slice(movss);
         le32(&mut code, 0x4004 - 0x100E);
-        code.extend_from_slice(&[0xF2, 0x0F, 0x10, 0x05]);
+        code.extend_from_slice(movsd);
         le32(&mut code, 0x4008 - 0x1016);
         code.extend_from_slice(&[0x48, 0x8D, 0x3D]);
         le32(&mut code, 0x4010 - 0x101D);
@@ -209,6 +215,20 @@ mod xrefs {
         assert_eq!(s.value, Some(Value::Str("hello".to_string())));
         assert!(s.evidence.iter().any(|e| e.contains("lea")));
         assert!(found.iter().all(|e| e.source == "xref"));
+    }
+
+    #[test]
+    fn vex_encoded_scalar_sse_is_typed_like_legacy_sse() {
+        // vmovss xmm0, [rip+d] = C5 FA 10 05 ; vmovsd xmm0, [rip+d] = C5 FB 10 05
+        let img = image_with(&[0xC5, 0xFA, 0x10, 0x05], &[0xC5, 0xFB, 0x10, 0x05]);
+        let elf = Elf::parse(&img).expect("synthetic ELF");
+        let mem = RegionsMem::new(vec![(0x4000, data())]);
+        let mut used: HashSet<String> = HashSet::new();
+        let found = static_entries(&elf, 0, &[], &[], &mem, &VarOptions::default(), &mut used)
+            .expect("scan");
+        let ty = |n: &str| found.iter().find(|e| e.name == n).map(|e| e.ty.clone());
+        assert_eq!(ty("g_4004").as_deref(), Some("f32"));
+        assert_eq!(ty("g_4008").as_deref(), Some("f64"));
     }
 
     #[test]

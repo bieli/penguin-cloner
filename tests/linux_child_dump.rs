@@ -23,7 +23,15 @@ fn dump_child_sleep_heap_or_stack() {
     let _ = fs::remove_dir_all(&out);
     fs::create_dir_all(&out).unwrap();
 
-    let info = process::collect(pid).expect("collect process info");
+    // Right after spawn the child may not have exec'd yet (empty/parent cmdline): wait for it.
+    let mut info = process::collect(pid).expect("collect process info");
+    for _ in 0..100 {
+        if info.cmdline.first().is_some_and(|c| c.contains("sleep")) {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        info = process::collect(pid).expect("collect process info");
+    }
     assert_eq!(info.pid, pid);
     assert!(
         info.cmdline

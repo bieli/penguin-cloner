@@ -30,7 +30,7 @@
 //!
 //! Only `std` is used, plus the optional `iced-x86` decoder behind the `xrefs` cargo feature
 //! (code-reference discovery). Without the feature the module has no dependencies.
-//! MSRV: Rust 1.70.
+//! MSRV: Rust 1.88.
 
 // The module exposes a small public API (RegionsMem, Report::dictionary, ...) that the CLI may not use yet.
 #![allow(dead_code)]
@@ -640,13 +640,14 @@ impl<'a> Elf<'a> {
                 None => continue,
             };
             let mut syms = Vec::new();
-            for rec in body.chunks_exact(24) {
+            let (records, _) = body.as_chunks::<24>();
+            for rec in records {
                 let info = rec[4];
                 if (info & 0xf) != STT_OBJECT {
                     continue;
                 }
                 syms.push(RawSym {
-                    name: cstr_at(tab, le_u32(rec) as usize),
+                    name: cstr_at(tab, le_u32(&rec[..]) as usize),
                     bind: info >> 4,
                     shndx: le_u16(&rec[6..]),
                     value: le_u64(&rec[8..]),
@@ -1103,7 +1104,7 @@ pub fn collect(input: &Input, mem: &dyn MemSource, opts: &VarOptions) -> Result<
             section: sec.name.clone(),
         });
     }
-    cands.sort_by(|a, b| (a.value, a.size).cmp(&(b.value, b.size)));
+    cands.sort_by_key(|c| (c.value, c.size));
 
     // 2. group aliases (same address + size), pick one canonical name, read and classify
     let mut entries: Vec<VarEntry> = Vec::new();

@@ -87,7 +87,7 @@ xrefs = ["dep:iced-x86"]
 ```
 
 `cargo build --no-default-features` drops it: symbols and `watch` keep working, `xref` discovery is
-reported as skipped in `notes`. Everything else uses only `std`. MSRV 1.70.
+reported as skipped in `notes`. Everything else uses only `std`. MSRV 1.88.
 
 ## 2. Wire it into the CLI
 
