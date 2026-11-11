@@ -4,3 +4,4 @@ pub mod dump;
 pub mod maps;
 pub mod process;
 pub mod strings;
+pub mod vars;

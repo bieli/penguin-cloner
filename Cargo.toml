@@ -16,6 +16,15 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
+# x86_64 instruction decoder used to find the data addresses a program's code touches
+iced-x86 = { version = "=1.21.0", optional = true }
+
+[features]
+default = ["xrefs"]
+# Automatic variable discovery in stripped binaries (`--no-default-features` drops the dependency;
+# symbols and live watching keep working).
+xrefs = ["dep:iced-x86"]
+
 [profile.release]
 lto = true
 codegen-units = 1

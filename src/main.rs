@@ -13,6 +13,7 @@ use penguin_cloner::dump::{self, DumpOptions};
 use penguin_cloner::maps;
 use penguin_cloner::process;
 use penguin_cloner::strings::{self, StringOptions};
+use penguin_cloner::vars;
 use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
@@ -79,6 +80,61 @@ enum Commands {
         /// Minimum string length
         #[arg(long, default_value_t = 6)]
         min_string: usize,
+
+        /// Also write variables.json: typed dictionary (int/float/string) of the program's
+        /// variables, auto-discovered without any JSON declaration
+        #[arg(long)]
+        vars: bool,
+
+        /// Unstripped build or .debug file of the SAME build (real names instead of g_<offset>)
+        #[arg(long, value_name = "FILE")]
+        symbols: Option<PathBuf>,
+
+        /// Mask values of variables / env vars whose name looks secret
+        #[arg(long)]
+        redact_secrets: bool,
+    },
+
+    /// Write variables.json for a running PID: typed dictionary of its variables (no memory dump)
+    Vars {
+        #[arg(long, short)]
+        pid: i32,
+
+        /// Output directory (created if missing)
+        #[arg(long, short, default_value = "./vars-out")]
+        out: PathBuf,
+
+        /// Unstripped build or .debug file of the SAME build
+        #[arg(long, value_name = "FILE")]
+        symbols: Option<PathBuf>,
+
+        /// Observe the running process for SECONDS to find counters, flags and floats
+        #[arg(long, value_name = "SECONDS")]
+        watch: Option<f64>,
+
+        /// Treat the binary as stripped even if it has symbols
+        #[arg(long)]
+        ignore_symbols: bool,
+
+        /// Symbols only: no automatic discovery
+        #[arg(long)]
+        no_discover: bool,
+
+        /// Also report read-only constants (.rodata) found from code (noisy)
+        #[arg(long)]
+        discover_rodata: bool,
+
+        /// Mask values of variables / env vars whose name looks secret
+        #[arg(long)]
+        redact_secrets: bool,
+
+        /// List pointers / structs / zeroed buffers under `details`
+        #[arg(long)]
+        keep_opaque: bool,
+
+        /// Also print the dictionary to stdout as `name = value` lines (used by the TUI)
+        #[arg(long)]
+        print: bool,
     },
 
     /// List memory maps for a PID (no dump)
@@ -146,6 +202,9 @@ fn run() -> Result<()> {
             strings,
             interesting_strings,
             min_string,
+            vars,
+            symbols,
+            redact_secrets,
         } => {
             if pid <= 1 {
                 bail!("refusing to target pid {pid}");
@@ -166,7 +225,45 @@ fn run() -> Result<()> {
                     min_len: min_string,
                     interesting_only: interesting_strings,
                 },
+                vars.then_some(VarsRequest {
+                    symbols,
+                    redact_secrets,
+                }),
             )
+        }
+        Commands::Vars {
+            pid,
+            out,
+            symbols,
+            watch,
+            ignore_symbols,
+            no_discover,
+            discover_rodata,
+            redact_secrets,
+            keep_opaque,
+            print,
+        } => {
+            if pid <= 1 {
+                bail!("refusing to target pid {pid}");
+            }
+            fs::create_dir_all(&out).with_context(|| format!("mkdir {}", out.display()))?;
+            let opts = vars::VarOptions {
+                redact_secrets,
+                keep_opaque,
+                discover: !no_discover,
+                discover_rodata,
+                ignore_symbols,
+                watch: watch_options(watch),
+                ..Default::default()
+            };
+            let report =
+                write_variables(pid, &out, symbols.as_deref(), opts).map_err(anyhow::Error::msg)?;
+            if print {
+                for (name, value) in report.dictionary() {
+                    println!("{name} = {value}");
+                }
+            }
+            Ok(())
         }
         Commands::Maps { pid } => cmd_maps(pid),
         Commands::Strings {
@@ -184,6 +281,7 @@ fn run() -> Result<()> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn cmd_dump(
     pid: i32,
     out: PathBuf,
@@ -192,6 +290,7 @@ fn cmd_dump(
     combined: bool,
     do_strings: bool,
     string_opts: StringOptions,
+    vars_req: Option<VarsRequest>,
 ) -> Result<()> {
     fs::create_dir_all(&out).with_context(|| format!("mkdir {}", out.display()))?;
 
@@ -240,6 +339,18 @@ fn cmd_dump(
         );
     }
 
+    // Values and code are read from the live process, so this works even with --heap-stack-only.
+    // Never watched here (the process is frozen); a failure never fails the whole dump.
+    if let Some(req) = vars_req {
+        let opts = vars::VarOptions {
+            redact_secrets: req.redact_secrets,
+            ..Default::default()
+        };
+        if let Err(e) = write_variables(pid, &out, req.symbols.as_deref(), opts).map(drop) {
+            eprintln!("warning: variables.json not written: {e}");
+        }
+    }
+
     if combined {
         let p = dump::write_combined_blob(&out, &report)?;
         eprintln!("[*] combined blob → {}", p.display());
@@ -282,6 +393,38 @@ fn cmd_dump(
 
     eprintln!("[+] done → {}", out.display());
     Ok(())
+}
+
+struct VarsRequest {
+    symbols: Option<PathBuf>,
+    redact_secrets: bool,
+}
+
+fn write_variables(
+    pid: i32,
+    out: &std::path::Path,
+    symbols: Option<&std::path::Path>,
+    opts: vars::VarOptions,
+) -> std::result::Result<vars::Report, String> {
+    let (path, report) = vars::dump_variables(pid as u32, out, symbols, &opts)?;
+    eprintln!(
+        "[*] variables.json: {} variables, {} env vars → {}",
+        report.dictionary().len(),
+        report.environment.len(),
+        path.display()
+    );
+    Ok(report)
+}
+
+fn watch_options(seconds: Option<f64>) -> Option<vars::WatchOptions> {
+    seconds.map(|s| {
+        let samples = 6usize;
+        vars::WatchOptions {
+            samples,
+            interval_ms: ((s * 1000.0) / (samples as f64 - 1.0)).max(10.0) as u64,
+            ..Default::default()
+        }
+    })
 }
 
 fn cmd_maps(pid: i32) -> Result<()> {
@@ -344,6 +487,10 @@ fn cmd_selftest(out: PathBuf) -> Result<()> {
             min_len: 4,
             interesting_only: false,
         },
+        Some(VarsRequest {
+            symbols: None,
+            redact_secrets: false,
+        }),
     );
 
     let _ = child.kill();

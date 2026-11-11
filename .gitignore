@@ -4,3 +4,4 @@ clone-*/
 clone-out/
 clone-selftest/
 *.bin
+tui/target/

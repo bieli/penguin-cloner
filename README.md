@@ -120,3 +120,22 @@ A raw memory dump cannot be “executed again” like a saved VM. Use the dump t
 ## License
 
 MIT
+
+## Variables as a typed dictionary (no JSON declaration needed)
+
+`penguin-cloner` can turn a running program's memory into `variables.json`: a real dictionary
+`name -> int | float | string`, discovered automatically (symbols if present, otherwise by decoding
+the program's own code, optionally by watching it run). Works on stripped binaries.
+
+```bash
+penguin-cloner vars --pid 1234 --out ./v --watch 2 --print   # variables only
+penguin-cloner dump --pid 1234 --out ./clone --vars          # also written next to the dump
+```
+
+```json
+"variables": { "g_4020": 512, "g_4024": 2.5, "g_4040": "legacy-01.example", "g_4088->+0x18": "alice" }
+```
+
+Pass `--symbols <unstripped build>` for real names instead of `g_<offset>`. x86_64 only for code-based
+discovery (`xrefs` feature, on by default). Details and limits: [docs/VARIABLES.md](docs/VARIABLES.md).
+In the TUI: `v` toggles `--vars` on dump, `w` shows the live dictionary.
