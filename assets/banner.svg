@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">penguin-cloner banner</title>
+  <desc id="desc">Cheerful Linux penguin mascot cloning and dumping a process</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#eef5f1"/>
+      <stop offset="100%" stop-color="#f7faf8"/>
+    </linearGradient>
+    <style type="text/css"><![CDATA[
+      .body { fill: #1a1f1c; }
+      .belly { fill: #ffffff; }
+      .beak { fill: #f0a820; }
+      .feet { fill: #f0a820; }
+      .blush { fill: #ff9e90; opacity: 0.7; }
+      .eye-curve { fill: none; stroke: #1a1f1c; stroke-width: 8; stroke-linecap: round; }
+      .smile { fill: none; stroke: #1a1f1c; stroke-width: 7; stroke-linecap: round; }
+      .proc-back { fill: #9db8ab; }
+      .proc-front { fill: #2f6f5e; }
+      .proc-line { fill: #d7ebe3; opacity: 0.95; }
+      .arrow { fill: none; stroke: #2f6f5e; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+      .ring { fill: none; stroke: #d7e3dc; stroke-width: 12; }
+      .spark { fill: #f0a820; }
+      .heart { fill: #ff7a6e; }
+      .title { fill: #1a1f1c; font-family: DejaVu Sans, Liberation Sans, Helvetica, Arial, sans-serif; font-size: 72px; font-weight: 700; }
+      .subtitle { fill: #4d635a; font-family: DejaVu Sans, Liberation Sans, Helvetica, Arial, sans-serif; font-size: 30px; font-weight: 500; }
+      .chip { fill: #2f6f5e; }
+      .chip-text { fill: #f7faf8; font-family: DejaVu Sans, Liberation Sans, Helvetica, Arial, sans-serif; font-size: 20px; font-weight: 600; }
+    ]]></style>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <circle cx="340" cy="320" r="210" class="ring"/>
+
+  <g class="spark">
+    <path d="M520 160 l6 14 14 6 -14 6 -6 14 -6 -14 -14 -6 14 -6 z"/>
+    <path d="M568 220 l4 9 9 4 -9 4 -4 9 -4 -9 -9 -4 9 -4 z" opacity="0.8"/>
+  </g>
+  <path class="heart" transform="translate(545 195) scale(1.1)" d="M12 21 C12 21 2 14 2 8 C2 4 5 2 8 2 C10 2 12 3.5 12 5 C12 3.5 14 2 16 2 C19 2 22 4 22 8 C22 14 12 21 12 21 Z"/>
+
+  <g transform="translate(450 230)">
+    <rect class="proc-back" x="28" y="12" width="170" height="120" rx="20"/>
+    <rect class="proc-front" x="0" y="34" width="170" height="120" rx="20"/>
+    <rect class="proc-line" x="24" y="62" width="122" height="12" rx="6"/>
+    <rect class="proc-line" x="24" y="88" width="86" height="12" rx="6"/>
+    <rect class="proc-line" x="24" y="114" width="102" height="12" rx="6"/>
+  </g>
+  <path class="arrow" d="M400 320 H438"/>
+  <path class="arrow" d="M424 300 L446 320 L424 340"/>
+
+  <g transform="translate(190 140) scale(1.15)">
+    <ellipse class="body" cx="96" cy="168" rx="86" ry="108"/>
+    <ellipse class="belly" cx="96" cy="186" rx="54" ry="74"/>
+    <circle class="body" cx="96" cy="76" r="60"/>
+    <ellipse class="belly" cx="96" cy="88" rx="40" ry="36"/>
+    <ellipse class="blush" cx="58" cy="100" rx="12" ry="8"/>
+    <ellipse class="blush" cx="134" cy="100" rx="12" ry="8"/>
+    <path class="eye-curve" d="M62 74 Q76 60 90 74"/>
+    <path class="eye-curve" d="M102 74 Q116 60 130 74"/>
+    <ellipse class="beak" cx="96" cy="100" rx="20" ry="14"/>
+    <path class="smile" d="M68 122 Q96 146 124 122"/>
+    <ellipse class="body" cx="8" cy="128" rx="18" ry="46" transform="rotate(-48 8 128)"/>
+    <ellipse class="body" cx="184" cy="158" rx="18" ry="44" transform="rotate(28 184 158)"/>
+    <ellipse class="feet" cx="64" cy="268" rx="26" ry="11" transform="rotate(-8 64 268)"/>
+    <ellipse class="feet" cx="128" cy="268" rx="26" ry="11" transform="rotate(8 128 268)"/>
+  </g>
+
+  <text class="title" x="700" y="280">penguin-cloner</text>
+  <text class="subtitle" x="700" y="340">Clone &amp; dump Linux processes</text>
+  <rect class="chip" x="700" y="380" width="310" height="48" rx="24"/>
+  <text class="chip-text" x="855" y="410" text-anchor="middle">/proc | memory | exe</text>
+</svg>
