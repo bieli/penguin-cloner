@@ -1,0 +1,10 @@
+[package]
+name = "penguin-cloner-tui"
+version = "0.1.0"
+edition = "2021"
+description = "ratatui frontend for penguin-cloner"
+license = "MIT"
+
+[dependencies]
+ratatui = "0.29"
+color-eyre = "0.6"
