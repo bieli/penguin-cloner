@@ -18,6 +18,10 @@ On older servers a process may have been running for years with config that only
 3. **cmdline**, **environ**, open **fds**, cwd
 4. **Printable strings** from memory (paths, URLs, keys, config fragments)
 
+### Motivational video
+
+["Do not reboot" - story about a few ywars running server on production!](https://www.youtube.com/watch?v=qsSSpg0KGsg)
+
 ## Build
 
 ```bash
